@@ -56,7 +56,7 @@ Put the `sixrd` binary you built in the previous step anywhere in the
 `dhclient-script` sets up its path as:
 `export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`.
 
-Put the [`6rd`][script] script in the `dhclient-exist-hooks.d` directory in
+Put the [`6rd`][script] script in the `dhclient-exit-hooks.d` directory in
 the right location on your filesystem. On Debian systems this is
 `/etc/dhcp/dhclient-exit-hooks.d/`.
 
