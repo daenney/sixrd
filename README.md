@@ -73,9 +73,9 @@ attempt to request 6rd information. In order to do so you'll need to add
 the following to [`dhclient.conf`][dhcconf]:
 
 ```text
-option option-6rd code 212 = { integer 8, integer 8, integer 16, integer 16,
-                               integer 16, integer 16, integer 16, integer 16,
-                               integer 16, integer 16, array of ip-address };
+option option-6rd code 212 = {
+    integer 8, integer 8, ip6-address, array of ip-address
+};
 ```
 
 Then add `option-6rd` to the list of parameters on the `request` line. It
