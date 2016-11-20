@@ -26,7 +26,7 @@ case $reason in
     BOUND|REBOOT)
         if [ -z "$new_option_6rd" ]; then
             log "did not receive any new options, not doing anything"
-            return
+            return 0
         else
             log "clean start, attempting to clean up any leftover configuration"
             sixrd stop
@@ -37,10 +37,10 @@ case $reason in
     RENEW|REBIND)
         if [ -z "$new_option_6rd" ] && [ -z "$old_option_6rd" ]; then
             log "did not receive new and old options, not doing anything"
-            return
+            return 0
         elif [ "$new_option_6rd" = "${old_option_6rd}" ] && [ "${new_ip_address}" = "${old_ip_address}" ]; then
             log "old and new options are identical, not doing anything"
-            return
+            return 0
         else
             log "removing with options=${old_option_6rd}, ip=${old_ip_address}"
             sixrd stop --options="${old_option_6rd}" --ip="${old_ip_address}"
