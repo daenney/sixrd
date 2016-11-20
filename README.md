@@ -17,6 +17,32 @@ that I've decided to try and solve this issue once and for all. If you
 find that this piece of software doesn't work for you that's a bug and
 please file an issue for it.
 
+## Building
+
+In order to build `sixrd` you'll need Go (I've written it using 1.7 but
+it should work with much older versions).
+
+```
+$ go get -u github.com/daenney/sixrd
+$ cd $GOPATH/src/github.com/daenney/sixrd
+$ env GOOS=linux GOARCH=amd64 go build -v
+```
+
+## Installation
+
+Put the `sixrd` binary you built in the previous step anywhere in the
+`$PATH` of your system (`/usr/bin` for example). On Debian systems
+`dhclient-script` sets up its path as:
+`export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`.
+
+Put the [`6rd`][script] script in the `dhclient-exist-hooks.d` directory in
+the right location on your filesystem. On Debian systems this is
+`/etc/dhcp/dhclient-exit-hooks.d/`.
+
+Ensure the `sixrd` binary and the `6rd` script are owned by `root:root`. The
+binary needs to be executable, the script should not be (it's sourced by
+`dhclient-script`).
+
 ## Configuration
 
 ### Configuring dhclient
@@ -34,19 +60,11 @@ option option-6rd code 212 = { integer 8, integer 8, integer 16, integer 16,
 Then add `option-6rd` to the list of parameters on the `request` line. It
 doesn't matter where in that list it is, as long as it's in it.
 
-### Configuring dhclient-script hook
-
-You also need to ensure this helper is properly called when `dhclient` runs
-the different `dhclient-script` hooks on state changes.
-
-Simply put [`dhclient-exit-hooks.d/6rd`][script] in the appropriate location
-on your filesystem (probably `/etc/dhcp/...`).
-
 ### Configuring IP forwarding
 
-Last but not least, if you start handing out IPv6 addresses to devices on your
-LAN you'll also have to enable IP forwarding or your packets won't be making
-it out to the world:
+If you start handing out IPv6 addresses to devices on your LAN you'll also
+have to enable IP forwarding or your packets won't be making it out to the
+world:
 
 ```
 sysctl -w net.ipv6.conf.$SIXRD_LAN_INTERFACE.forwarding=1
