@@ -1,0 +1,329 @@
+# sixrd
+
+… is a helper that can be triggered by a [dhclient-script][dhs]
+exit hook to configure IPv6 connectivity (essentially a dynamic 6to4
+tunnel) for a host based on receving `OPTION_6RD` (212) over DHCPv4.
+
+See [RFC5969][rfc5969] for the full specification.
+
+Though most embedded routers that don't ship with completely crappy
+software (so ASUS and anything based on opensource router firmware) can
+handle 6rd just fine most Linux boxes cannot. I happen to prefer a Linux
+box as my home router and use "real" home routers purely in a switch/AP
+mode.
+
+Getting 6rd going on Linux has caused me to pull out enough of my hairs
+that I've decided to try and solve this issue once and for all. If you
+find that this piece of software doesn't work for you that's a bug and
+please file an issue for it.
+
+## Configuration
+
+### Configuring dhclient
+
+By default on most distributions the [dhclient][dhc] configuration does not
+attempt to request 6rd information. In order to do so you'll need to add
+the following to [`dhclient.conf`][dhcconf]:
+
+```text
+option option-6rd code 212 = { integer 8, integer 8, integer 16, integer 16,
+                               integer 16, integer 16, integer 16, integer 16,
+                               integer 16, integer 16, array of ip-address };
+```
+
+Then add `option-6rd` to the list of parameters on the `request` line. It
+doesn't matter where in that list it is, as long as it's in it.
+
+### Configuring dhclient-script hook
+
+You also need to ensure this helper is properly called when `dhclient` runs
+the different `dhclient-script` hooks on state changes.
+
+Simply put [`dhclient-exit-hooks.d/6rd`][script] in the appropriate location
+on your filesystem (probably `/etc/dhcp/...`).
+
+### Configuring IP forwarding
+
+Last but not least, if you start handing out IPv6 addresses to devices on your
+LAN you'll also have to enable IP forwarding or your packets won't be making
+it out to the world:
+
+```
+sysctl -w net.ipv6.conf.$SIXRD_LAN_INTERFACE.forwarding=1
+```
+
+Don't forget to set this through `/etc/sysctl.conf` or something similar so
+it is enabled the next time you boot the machine:
+
+```
+# A bunch of default settings to keep the router out of trouble
+net.ipv6.conf.default.forwarding = 0
+net.ipv6.conf.default.accept_ra = 0
+net.ipv6.conf.default.router_solicitations = 0
+net.ipv6.conf.default.accept_ra_rtr_pref = 0
+net.ipv6.conf.default.accept_ra_pinfo = 0
+net.ipv6.conf.default.accept_ra_defrtr = 0
+net.ipv6.conf.default.autoconf = 0
+net.ipv6.conf.default.dad_transmits = 0
+
+net.ipv6.conf.$SIXRD_LAN_INTERFACE.forwarding = 1
+```
+
+(You should replace `SIXRD_LAN_INTERFACE` with the actual interface name)
+
+## Usage
+
+`sixrd` has two subcommands, `start` and `stop` which respectively create
+and configure the network interface(s) or deconfigures the setup and
+destroys the tunnel interface.
+
+By default it will manipulate an interface by the name of `ipv6rd` which
+you can override using the `--sixrd-interface` option or by setting the
+`SIXRD_INTERFACE` environment variable.
+
+It will log any activity to syslog tagged with `6rd` and prefix
+any message with `sixrd: ` and the severity level (info or error). The
+dhclient script logs to the same tag and prefixes its output with
+`dhclient: `. This gets all the logging in one place and allows you to
+separate any 6rd related logging out into a separate file by configuring
+syslog accordingly.
+
+**NOTE**: You have to define the environment variables in `/etc/environment`.
+This will make the environment variables available when you run `sixrd`
+interactively on the console (don't forget to log out and back in first) and
+the dhclient hook is configured to load and export any `SIXRD_` variable from
+that same file (it needs to do this because `dhclient-script` sets up its own
+custom environment).
+
+```
+usage: sixrd [<flags>] <command> [<args> ...]
+
+dhclient configuration helper for IPv6 rapid deployment (6rd)
+
+Flags:
+  --help                         Show context-sensitive help (also try --help-long and --help-man).
+  --log-dest=syslog              log destination
+  --sixrd-interface="ipv6rd"     sit interface to (de)configure
+  --lan-interface=LAN-INTERFACE  LAN interface to setup routing for
+
+Commands:
+  help [<command>...]
+    Show help.
+
+  start --ip=IP --options=OPTIONS [<flags>]
+    (re)configure IPv6 connectivity
+
+  stop [<flags>]
+    teardown IPv6 configuration
+```
+
+
+### start
+
+This subcommand must be supplied with at least the 6rd DHCP options as
+well as the WAN IP address. These two are used to calculate the 6rd
+prefix network and size as well as a subnet that can be configured for
+your own use.
+
+```
+usage: sixrd start --ip=IP --options=OPTIONS [<flags>]
+
+(re)configure IPv6 connectivity
+
+Flags:
+  --help                         Show context-sensitive help (also try --help-long and --help-man).
+  --log-dest=syslog              log destination
+  --sixrd-interface="ipv6rd"     sit interface to (de)configure
+  --lan-interface=LAN-INTERFACE  LAN interface to setup routing for
+  --ip=IP                        (newly) received WAN IP address
+  --options=OPTIONS              (newly) received 6rd options
+  --sixrd-mtu="1480"             MTU for the tunnel
+```
+
+It will:
+
+* create the `ipv6rd` interface
+* configure a bunch of settings related to setting up the 6to4 tunnel
+* calculate your IPv6 subnet and attach `subnet::1/128` to the
+  `ipv6rd` interface
+
+When supplied with the optional `--lan-interface` or `SIXRD_LAN_INTERFACE`
+it will additionally hook up `subnet::1/64` to the LAN interface. You can
+now configure a daemon to do route advertisements or DHCPv6 on the LAN
+interface for that subnet.
+
+### stop
+
+This subcommand destroys the `ipv6rd` interface which stops/deconfigures
+the tunnel.
+
+```
+usage: sixrd stop [<flags>]
+
+teardown IPv6 configuration
+
+Flags:
+  --help                         Show context-sensitive help (also try --help-long and --help-man).
+  --log-dest=syslog              log destination
+  --sixrd-interface="ipv6rd"     sit interface to (de)configure
+  --lan-interface=LAN-INTERFACE  LAN interface to setup routing for
+  --ip=IP                        (old/current) WAN IP address
+  --options=OPTIONS              (old/current) 6rd options
+```
+
+When supplied with (in this case optional) the `--options`, `--ip` and
+`--lan-interface` or `SIXRD_LAN_INTERFACE` it will also remove
+the previously configured subnet from the LAN interface. The reason it
+needs the old/current DHCP options and IP is that without them it can't
+calculate the subnet. Though `stop` could guess by parsing `ip addr show`
+output it risks accidentally deconfiguring the wrong network.
+
+## FAQ
+
+### What ISP has this been tested with?
+
+Telia (Privat Fiber)
+
+### Are just executing `ip` commands?
+
+Yes. Right now that's the case, mostly because the few  netlink libraries
+for Go can't do everything I need them to. I could dive one level deeper and
+deal with using syscalls all over but that felt even worse.
+
+Since all I need to do is execute commands, not interpret any output of the
+`ip` command itself this felt safe enough.
+
+### Why use this over some random script on the internet I found?
+
+There are a variety of 6rd related scripts floating around the internet
+promising to help with setting up the tunnel for you. Some even go so far as
+to document how to configure `dhclient` and associated scripts correctly,
+however most are in a pretty crappy state. These scripts can usually
+handle correctly configuring an interface for you (but not tearing one
+down, let alone correctly deal with configuration changes) and can mostly
+only cope with specific prefix sizes. If your ISP deviates in any way
+everything breaks down.
+
+### You only support Linux?
+
+No, well yes sort of. Right now that is the case. Mostly because all I have is
+a Linux box. Testing this stuff isn't super trivial so I need to actually have
+a live *BSD box to toy around with to ensure the end configuration works.
+
+However, if anyone wants to it should be easy to support *BSD. The creation,
+configuration, adding route, subnet null routing, deconfiguration and
+destruction of this is all split up into separate functions. Those could be
+moved into a `sixrd_linux.go` and have a `sixrd_bsd.go` providing the same
+set of functions just calling out to other utilities.
+
+### What's up with the /128 and the /64 things you're doing?
+
+Once it has calculated your subnet, it picks a `/64` (as that's the smallest
+IPv6 subnet one should assign) and picks the first IP of that subnet and
+mounts it on the `ipv6rd` interface. A single IP in IPv6 gets a CIDR mask of
+`128`, much like a single IP in IPv4 is a `/32`.
+
+Because of this your host is now (externally) reachable over IPv6.
+
+When you also supply the `SIXRD_LAN_INTERFACE` it additionally binds that same
+IP but as part of the subnet, so with a `64` mask, on the LAN interface. Now
+when devices on your LAN are assigned an IPv6 address from that subnet there's
+an interface on your box bound to an IP within that subnet that can route
+those packets. So you now have IPv6 connectivity for hosts on your LAN.
+
+### Why is it blackholing/null routing my whole subnet?
+
+Because it's trying to be a good netizen. It is possible the subnet you get
+from your ISP is bigger than the one sixrd assigns (it always picks a `/64`).
+However, if traffic then gets sent to another IP in your larger subnet your
+ISP will route it to you, you will have no route for it so send it back,
+they'll route it to you since it's your subnet and round and round it goes.
+
+By blackholing the subnet (with a higher metric) we ensure that only traffic
+for IPs that you actually have a route for are attempted to be forwarded and
+silently discard everything else.
+
+It will also configure a null route for you if you only use sixrd to setup the
+tunnel, but not configure a LAN interface.
+
+### How do I get devices on my LAN to get an IPv6 IP?
+
+That's up to you. It's very common to use [radvd][radvd] to do route
+advertisements for you and IPv6 capable devices on your LAN will pick up on
+it, chose an IP from the subnet and go with it. However, if you're already
+using [dnsmasq][dnsmasq] configure it to do the route advertisements for you
+instead (the `enable-ra` option is what you're looking for).
+
+DHCPv6 can be handled by a number of daemons but I recommend using dnsmasq's
+built-in DHCP and DHCPv6 abilities. The configuration for RA, DHCP and DHCPv6
+will look something like this:
+
+```
+bind-interfaces
+interface=SIXRD_LAN_INTERFACE
+dhcp-authoritative
+dhcp-range=192.168.0.100,192.168.0.200,12h
+dhcp-range=SIXRD_SUBNET::100,SIXRD_SUBNET::1500
+dhcp-option=option6:dns-server,[::]
+enable-ra
+```
+
+You can find your `SIXRD_SUBNET` by looking at the output of `ip addr show
+SIXRD_LAN_INTERFACE` (check for the `inet6` subnet with `scope global`) or
+see what got logged to syslog.
+
+The really cool thing with dnsmasq is that (if configured to do so) it will
+create DNS entries for you for every host that gets a DHCP and DHCPv6 lease.
+
+Since it's doing DHCP and DHCPv6 for you quering for `hostname.MY_DOMAIN.MY_TLD`
+will now return an `A` and `AAAA` record for you. This allows you to start
+addressing everything by name across your network instead of hardcoding IPs
+and will automatically upgrade to IPv6 internally if both hosts support it and
+are configured to prefer IPv6 over IPv4.
+
+A slightly more complete example for dnsmasq:
+
+```
+port=53
+domain-needed
+bogus-priv
+dhcp-authoritative
+interface=SIXRD_LAN_INTERFACE
+bind-interfaces
+no-hosts
+expand-hosts
+no-negcache
+
+# Pick an actual domain you own or use something within .local as that will
+# not ever become an official TLD so we don't risk sending those queries to
+# upstream DNS servers
+domain=mylittlepony.local
+local=/mylittlepony.local/
+
+address=/thisbox.mylittlepony.local/192.168.0.1
+address=/thisbox.mylittlepony.local/SIXRD_SUBNET::1
+
+dhcp-range=192.168.0.100,192.168.0.200,12h
+dhcp-range=SIXRD_SUBNET::100,SIXRD_SUBNET::1500
+dhcp-option=option6:dns-server,[::]
+enable-ra
+
+dhcp-host=MAC_ADDRESS,hostname,IPv4 # for static assignments
+dhcp-host=DUID,hostname,[IPv6] # for static assignments
+```
+
+## Credits
+
+* [Bonan][bonan] for writing the [dhcp6rd][dhcp6rd] library
+* Many random scripts on the internet showcasing (part) of how to get 6rd
+  working
+
+[dhc]: https://linux.die.net/man/8/dhclient
+[dhcconf]: https://linux.die.net/man/5/dhclient.conf
+[dhs]: https://linux.die.net/man/8/dhclient-script
+[rfc5969]: https://tools.ietf.org/html/rfc5969#section-7.1.1
+[script]: dhclient-exit-hooks.d/6rd
+[dnsmasq]: http://www.thekelleys.org.uk/dnsmasq/doc.html
+[radvd]: http://www.litech.org/radvd/
+[bonan]: https://github.com/bonan
+[dhcp6rd]: https://github.com/bonan/dhcp6rd
