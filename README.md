@@ -17,6 +17,27 @@ that I've decided to try and solve this issue once and for all. If you
 find that this piece of software doesn't work for you that's a bug and
 please file an issue for it.
 
+**Table of Contents**
+
+* [Building](#building)
+* [Installation](#installation)
+* [Configuration](#configuration)
+  * [Configuring dhclient](#configuring-dhclient)
+  * [Configuring IP forwarding](#configuring-ip-forwarding)
+* [Usage](#usage)
+  * [start](#start)
+  * [stop](#stop)
+* [FAQ](#faq)
+  * [What ISP has this been tested with?](#what-isp-has-this-been-tested-with)
+  * [Are just executing ip commands?](#are-just-executing-ip-commands)
+  * [Why use this over some random script on the internet I found?](#why-use-this-over-some-random-script-on-the-internet-i-found)
+  * [You only support Linux?](#you-only-support-linux)
+  * [What's up with the /128 and the /64 things you're doing?](#whats-up-with-the-128-and-the-64-things-youre-doing)
+  * [Why is it blackholing/null routing my whole subnet?](#why-is-it-blackholingnull-routing-my-whole-subnet)
+  * [How do I get devices on my LAN to get an IPv6 IP?](#how-do-i-get-devices-on-my-lan-to-get-an-ipv6-ip)
+  * [Not all my devices show an IPv6 address when looked up by hostname](#not-all-my-devices-show-an-ipv6-address-when-looked-up-by-hostname)
+* [Credits](#credits)
+
 ## Building
 
 In order to build `sixrd` you'll need Go (I've written it using 1.7 but
