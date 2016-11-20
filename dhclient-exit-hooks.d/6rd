@@ -1,0 +1,65 @@
+#!/usr/bin/env sh
+
+# This script relies on a number of variables that are set by dhclient when it
+# invokes the different exit-hooks. It relies on:
+# $reason: why the script got executed (dhclient state change)
+# $new_option_*: newly received options from DHCP
+# $old_option_*: old/current DHCP options (from the last DHCP lease)
+
+
+# A small helper to log our actions to syslog. Every message will be logged
+# tagged with 6rd and the 'dhclient: ' prepended to it.
+log() {
+    logger -i -t '6rd' "dhclient: ${1}"
+}
+
+command -v grep >/dev/null 2>&1 || {
+    log "cannot find grep in \$PATH, aborting"
+    exit 1
+}
+
+command -v sixrd >/dev/null 2>&1 || {
+    log "cannot find sixrd in \$PATH, aborting"
+    exit 1
+}
+
+# dhclient-script sets up its own environment so we have to load and export
+# the SIXRD_ environment variables ourselves
+sixrd_vars=$(grep "SIXRD_" "/etc/environment")
+for sixrd_var in "$sixrd_vars"; do
+  export "${sixrd_var}"
+done
+
+case $reason in
+    BOUND|REBOOT)
+        if [ -z "$new_option_6rd" ]; then
+            log "did not receive any new options, not doing anything"
+            exit 0
+        fi
+        log "clean start, attempting to clean up any leftover configuration"
+        sixrd stop
+        log "configuring with options=${new_option_6rd}, ip=${new_ip_address}"
+        sixrd start --options="${new_option_6rd}" --ip="${new_ip_address}"
+        ;;
+    RENEW|REBIND)
+        if [ -z "$new_option_6rd" ] && [ -z "$old_option_6rd" ]; then
+            log "did not receive new and old options, not doing anything"
+            exit 0
+        fi
+        if [ "$new_option_6rd" = "${old_option_6rd}" ] && [ "${new_ip_address}" = "${old_ip_address}" ]; then
+            log "old and new options are identical, not doing anything"
+            exit 0
+        fi
+        log "removing with options=${old_option_6rd}, ip=${old_ip_address}"
+        sixrd stop --options="${old_option_6rd}" --ip="${old_ip_address}"
+        log "configuring with options=${new_option_6rd}, ip=${new_ip_address}"
+        sixrd start --options="${new_option_6rd}" --ip="${new_ip_address}"
+        ;;
+    EXPIRE|FAIL|STOP|RELEASE|TIMEOUT)
+        if [ -z "$old_option_6rd" ] || [ -z "$old_ip_address" ]; then
+            log "did not receive any old options, not doing anything"
+            exit 0
+        fi
+        sixrd stop --options="${old_option_6rd}" --ip="${old_ip_address}"
+        ;;
+esac
