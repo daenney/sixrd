@@ -1,0 +1,33 @@
+version 6
+
+version 6
+
+ipv6 interface any v6interop proto icmpv6
+        server ipv6error accept
+        client ipv6neigh accept
+        server ipv6neigh accept
+        client ipv6router accept
+        server ipv6router accept
+        policy return
+
+ipv4 interface WAN internet
+        policy drop
+        protection strong
+        server "ping ssh" accept
+        client all accept
+
+ipv6 interface SIXRD_INTERFACE interne6
+        policy drop
+        protection strong
+        server "ping ssh" accept
+        client all accept
+
+interface SIXRD_LAN_INTERFACE lan
+        policy accept
+
+ipv4 router lan2internet inface SIXRD_LAN_INTERFACE outface WAN
+        masquerade
+        route all accept
+
+ipv6 router lan2internet6 inface SIXRD_LAN_INTERFACE outface SIXRD_INTERFACE
+        route all accept
