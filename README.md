@@ -67,24 +67,14 @@ have to enable IP forwarding or your packets won't be making it out to the
 world:
 
 ```
-sysctl -w net.ipv6.conf.$SIXRD_LAN_INTERFACE.forwarding=1
+sysctl -w net.ipv6.conf.all.forwarding=1
 ```
 
 Don't forget to set this through `/etc/sysctl.conf` or something similar so
 it is enabled the next time you boot the machine:
 
 ```
-# A bunch of default settings to keep the router out of trouble
-net.ipv6.conf.default.forwarding = 0
-net.ipv6.conf.default.accept_ra = 0
-net.ipv6.conf.default.router_solicitations = 0
-net.ipv6.conf.default.accept_ra_rtr_pref = 0
-net.ipv6.conf.default.accept_ra_pinfo = 0
-net.ipv6.conf.default.accept_ra_defrtr = 0
-net.ipv6.conf.default.autoconf = 0
-net.ipv6.conf.default.dad_transmits = 0
-
-net.ipv6.conf.$SIXRD_LAN_INTERFACE.forwarding = 1
+net.ipv6.conf.all.forwarding=1
 ```
 
 (You should replace `SIXRD_LAN_INTERFACE` with the actual interface name)
