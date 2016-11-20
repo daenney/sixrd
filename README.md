@@ -77,8 +77,6 @@ it is enabled the next time you boot the machine:
 net.ipv6.conf.all.forwarding=1
 ```
 
-(You should replace `SIXRD_LAN_INTERFACE` with the actual interface name)
-
 ## Usage
 
 `sixrd` has two subcommands, `start` and `stop` which respectively create
