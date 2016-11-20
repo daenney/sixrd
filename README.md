@@ -359,17 +359,21 @@ FAQ comes in.
 
 ### Not all my devices show an IPv6 address when looked up by hostname
 
-Honestly, I'm clueless here. With the above setup some of my devices get both
-an A and quad-A record. My Chromecast for example works fine. However none of
-my iOS or macOS devices seem to get their IPv6 address registered in dnsmasq.
+This happens when your OS has the privacy extensions active. The IP address
+it settles on is not based on the MAC address of the interface (which is
+what happens without the privacy extensions). As a consequence dnsmasq can't
+use the MAC address from an existing DHCPv4 lease to figure out it's the same
+device.
 
-I've spent a couple of hours in the dnsmasq documentation and on different
-forum posts and from all I can see this should work. If you happen to know or
-are able to figure it out, please raise an issue and let me know!
+But it gets better. If you go into full DHCPv6 mode most devices don't send
+a DHCP hostname with them meaning that even in this case you'll need a static
+DUID based mapping to get this to work.
+
+It's a lot of sadness all around.
 
 ## Credits
 
-* [Bonan][bonan] for writing the [dhcp6rd][dhcp6rd] library
+* [bonan][bonan] for writing the [dhcp6rd][dhcp6rd] library
 * Many random scripts on the internet showcasing (part) of how to get 6rd
   working
 
