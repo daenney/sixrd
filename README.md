@@ -279,7 +279,7 @@ bind-interfaces
 interface=SIXRD_LAN_INTERFACE
 dhcp-authoritative
 dhcp-range=192.168.0.100,192.168.0.200,12h
-dhcp-range=SIXRD_SUBNET::100,SIXRD_SUBNET::1500,ra-stateless,ra-names,64,12h
+dhcp-range=::,constructor:SIXRD_LAN_INTERFACE,ra-stateless,ra-names,64,12h
 dhcp-option=option6:dns-server,[::]
 enable-ra
 ```
@@ -320,7 +320,7 @@ address=/thisbox.mylittlepony.local/192.168.0.1
 address=/thisbox.mylittlepony.local/SIXRD_SUBNET::1
 
 dhcp-range=192.168.0.100,192.168.0.200,12h
-dhcp-range=SIXRD_SUBNET::100,SIXRD_SUBNET::1500,ra-stateless,ra-names,64,12h
+dhcp-range=::,constructor:SIXRD_LAN_INTERFACE,ra-stateless,ra-names,64,12h
 dhcp-option=option6:dns-server,[::]
 enable-ra
 
