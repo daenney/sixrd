@@ -113,6 +113,16 @@ the dhclient hook is configured to load and export any `SIXRD_` variable from
 that same file (it needs to do this because `dhclient-script` sets up its own
 custom environment).
 
+For example:
+```
+SIXRD_LAN_INTERFACE=eth0
+SIXRD_MTU=1420
+SIXRD_INTERFACE=myCoolInterfacename
+```
+
+Please ensure you don't put `""` around the values you're assigning to your
+variables as those will get passed through verbatim (which breaks things).
+
 ```
 usage: sixrd [<flags>] <command> [<args> ...]
 
