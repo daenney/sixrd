@@ -310,13 +310,18 @@ SIXRD_LAN_INTERFACE` (check for the `inet6` subnet with `scope global`) or
 see what got logged to syslog.
 
 The really cool thing with dnsmasq is that (if configured to do so) it will
-create DNS entries for you for every host that gets a DHCP and DHCPv6 lease.
+create DNS entries for you for every host that gets a DHCP lease and for those
+that get an IPv6 IP (usually, some things behave strangely).
 
-Since it's doing DHCP and DHCPv6 for you quering for `hostname.MY_DOMAIN.MY_TLD`
-will now return an `A` and `AAAA` record for you. This allows you to start
-addressing everything by name across your network instead of hardcoding IPs
-and will automatically upgrade to IPv6 internally if both hosts support it and
-are configured to prefer IPv6 over IPv4.
+In order to get that to work we need to do a few things which is mostly
+trickery with how we declare the `dhcp-range`. Looking at it it might seem a
+bit odd but what it does is relatively simple. It configures itself to do
+DHCPv6 for the whole subnet `::` on `SIXRD_LAN_INTERFACE`. This might not be
+what we want but paired with the `ra-stateless,ra-names` option we're
+actually telling dnsmasq to let us do stateless IPv6 configuration (so the
+host gets to pick its address). Dnsmasq will try and guess the autoconfigured
+address (by using the DHCPv4 leases as a hint) and hand out any additional
+options out over DHCPv6.
 
 A slightly more complete example for dnsmasq:
 
@@ -346,8 +351,15 @@ dhcp-option=option6:dns-server,[::]
 enable-ra
 
 dhcp-host=MAC_ADDRESS,hostname,IPv4 # for static assignments
-dhcp-host=DUID,hostname,[IPv6] # for static assignments
 ```
+
+Note that doing it this way means you won't be able to configure any static
+assignments by using DHCPv6. I much prefer this as it allows things like
+the privacy extensions to do their thing. Since we have DNS anyway there's
+little harm in having devices change/pick their address.
+
+Unfortunately, it's not all perfect, which is where the next part of the
+FAQ comes in.
 
 ### Not all my devices show an IPv6 address when looked up by hostname
 
