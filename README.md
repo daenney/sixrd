@@ -305,10 +305,6 @@ dhcp-option=option6:dns-server,[::]
 enable-ra
 ```
 
-You can find your `SIXRD_SUBNET` by looking at the output of `ip addr show
-SIXRD_LAN_INTERFACE` (check for the `inet6` subnet with `scope global`) or
-see what got logged to syslog.
-
 The really cool thing with dnsmasq is that (if configured to do so) it will
 create DNS entries for you for every host that gets a DHCP lease and for those
 that get an IPv6 IP (usually, some things behave strangely).
