@@ -328,6 +328,16 @@ dhcp-host=MAC_ADDRESS,hostname,IPv4 # for static assignments
 dhcp-host=DUID,hostname,[IPv6] # for static assignments
 ```
 
+### Not all my devices show an IPv6 address when looked up by hostname
+
+Honestly, I'm clueless here. With the above setup some of my devices get both
+an A and quad-A record. My Chromecast for example works fine. However none of
+my iOS or macOS devices seem to get their IPv6 address registered in dnsmasq.
+
+I've spent a couple of hours in the dnsmasq documentation and on different
+forum posts and from all I can see this should work. If you happen to know or
+are able to figure it out, please raise an issue and let me know!
+
 ## Credits
 
 * [Bonan][bonan] for writing the [dhcp6rd][dhcp6rd] library
