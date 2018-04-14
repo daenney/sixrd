@@ -28,6 +28,7 @@ var (
 	oldIP           = stopCmd.Flag("ip", "(old/current) WAN IP address").String()
 	oldSixrdOptions = stopCmd.Flag("options", "(old/current) 6rd options").String()
 	dhcpOpts        *dhcp6rd.Option6RD
+	sixrdRelayPrefix string
 	sixrdIP         string
 	sixrdFullSubnet string
 	sixrdPrefix     string
@@ -82,7 +83,7 @@ func createInterface() {
 }
 
 func configureTunnel() {
-	execute(ipCmd("tunnel", "6rd", "dev", *sixrdIntf, "6rd-prefix", sixrdPrefix))
+	execute(ipCmd("tunnel", "6rd", "dev", *sixrdIntf, "6rd-prefix", sixrdPrefix, "6rd-relay_prefix", sixrdRelayPrefix))
 	execute(ipCmd("addr", "add", sixrdIP, "dev", *sixrdIntf))
 	execute(ipCmd("link", "set", "mtu", *sixrdMTU, "dev", *sixrdIntf))
 }
@@ -145,6 +146,11 @@ func decodeDHCPOptions(opts string, ip string) {
 	if err != nil {
 		app.Fatalf("could not determine 6rd subnet")
 	}
+	_, ipv4net, err := net.ParseCIDR(ip + "/" + strconv.Itoa(dhcpOpts.MaskLen))
+	if err != nil {
+		app.Fatalf("could not parse relay prefix")
+	}
+	sixrdRelayPrefix = ipv4net.String()
 	sixrdIP = subnet.IP.String() + "1/128"
 	sixrdSubnet = subnet.IP.String() + "1/64"
 	sixrdPrefixSize, _ = subnet.Mask.Size()
